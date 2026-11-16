@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Form
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from app.database import run_query
@@ -63,6 +63,10 @@ def message_detail(request: Request, message_id: int):
         fetchone=True,
     )
     if not message:
-        raise HTTPException(status_code=404, detail="Message not found")
+        return templates.TemplateResponse(
+            "message_detail.html",
+            {"request": request, "user": user, "message": None},
+            status_code=404,
+        )
 
     return templates.TemplateResponse("message_detail.html", {"request": request, "user": user, "message": message})
