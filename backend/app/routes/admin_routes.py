@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from app.database import run_query, get_conn
@@ -75,20 +75,21 @@ def update_grade(
     grade_id: int,
     grade_value: str = Form(...),
     feedback: str = Form(...),
-    role: str = Form("student"),
 ):
     user = get_user_from_session(request)
     if not user:
         return RedirectResponse("/login", status_code=302)
 
-    if role in ["admin", "teacher", "ta"]:
-        run_query(
-            "UPDATE grades SET grade_value=%s, feedback=%s, status='published' WHERE id=%s",
-            (grade_value, feedback, grade_id),
-            commit=True,
-        )
+    # Authorization must use the authenticated session, never user-supplied form data.
+    if user["role"] not in ("admin", "teacher", "ta"):
+        raise HTTPException(status_code=403, detail="Not authorized to modify grades")
 
-    return RedirectResponse("/admin/grades", status_code=302)
+    run_query(
+        "UPDATE grades SET grade_value=%s, feedback=%s, status='published' WHERE id=%s",
+        (grade_value, feedback, grade_id),
+        commit=True,
+    )
+    return RedirectResponse("/admin/grades", status_code=303)
 
 
 @router.get("/admin/search-users", response_class=HTMLResponse)
